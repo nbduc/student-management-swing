@@ -6,6 +6,7 @@
 package model;
 
 import java.io.Serializable;
+import utils.StudentUtils;
 
 /**
  *
@@ -13,32 +14,32 @@ import java.io.Serializable;
  */
 public class Student implements Serializable{
     private static final long serialVersionUID = 1L;
-    private Integer id;
-    private String fullName;
-    private Float point;
-    private byte [] image;
-    private String address;
-    private String note;
+    private int id = 0;
+    private String fullName = "No data";
+    private double point = 0;
+    private String image = "No data";
+    private String address = "No data";
+    private String note = "No data";
     
     public Student(){
-        this.id = 0;
+        this.id = StudentUtils.getNextId();
     }
     
     public String toString(){
-        return id + "|" + fullName + "|" + address + "|" + note;
+        return id + "|" + fullName + "|" + address + "|" + note + "|" + image;
     }
 
     /**
      * @return the id
      */
-    public Integer getId() {
+    public int getId() {
         return id;
     }
 
     /**
      * @param id the id to set
      */
-    public void setId(Integer id) {
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -59,28 +60,28 @@ public class Student implements Serializable{
     /**
      * @return the point
      */
-    public Float getPoint() {
+    public double getPoint() {
         return point;
     }
 
     /**
      * @param point the point to set
      */
-    public void setPoint(Float point) {
+    public void setPoint(double point) {
         this.point = point;
     }
     
     /**
      * @return the image
      */
-    public byte [] getImage() {
+    public String getImage() {
         return image;
     }
 
     /**
      * @param image the image to set
      */
-    public void setImage(byte [] image) {
+    public void setImage(String image) {
         this.image = image;
     }
 

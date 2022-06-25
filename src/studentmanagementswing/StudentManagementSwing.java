@@ -9,6 +9,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.ArrayList;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -18,6 +19,7 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import model.Student;
+import utils.StudentUtils;
 import verifier.NotEmptyVerifier;
 import verifier.PointVerifier;
 
@@ -46,25 +48,25 @@ public class StudentManagementSwing extends JFrame{
     private static JSplitPane mainPanel;
     
     private static JPanel actionPanel;
+    private static JButton resetButton;
     private static JButton addButton;
     private static JButton removeButton;
     private static JButton updateButton;
     private static JButton exportButton;
     
     static class StudentTableModel extends AbstractTableModel {
+        public int selectedIndex = 0;
+        public final ArrayList<Student> studentList;
+        public StudentTableModel(ArrayList<Student> studentList) {
+            super();
+            this.studentList = studentList;
+        }
         private final String[] columnNames = {
             "Mã hs",
             "Tên học sinh",
             "Điểm",
             "Địa chỉ",
             "Ghi chú"
-        };
-        private final Object[][] data = {
-            {1, "Smith", 8.5, "123 Lê Thánh Tôn", "Ngoan hiền, chăm học"},
-            {2, "Doe", 8, "456 Nguyễn Thị Minh Khai", "Tiếp thu bài tốt, tuy nhiên còn hơi chậm"},
-            {3, "Black", 7.6, "987 Hùng Vương", "Học khá, chăm chú nghe giảng"},
-            {4, "White",  9, "112 Nguyễn Thái Học", "Chăm chỉ, hoàn thành xuất sắc bài tập"},
-            {5, "Brown",  9.2, "89 Trần Hưng Đạo", "Gương sáng chói loà"}
         };
         
         public final Object[] longValues = 
@@ -76,7 +78,7 @@ public class StudentManagementSwing extends JFrame{
         }
 
         public int getRowCount() {
-            return data.length;
+            return studentList.size();
         }
 
         public String getColumnName(int col) {
@@ -84,17 +86,61 @@ public class StudentManagementSwing extends JFrame{
         }
 
         public Object getValueAt(int row, int col) {
-            return data[row][col];
+            if(studentList.size() == 0){
+                return null;
+            }
+            Student student = studentList.get(row);
+            switch(col){
+                case 0: return student.getId();
+                case 1: return student.getFullName();
+                case 2: return student.getPoint();
+                case 3: return student.getAddress();
+                case 4: return student.getNote();
+                default: return null;
+            }
         }
 
         public Class getColumnClass(int c) {
+            if(studentList.size() == 0){
+                return Object.class;
+            }
             return getValueAt(0, c).getClass();
+        }
+        
+        public void addStudent(Student student){
+            studentList.add(student);
+            fireTableDataChanged();
+        }
+        
+        public void removeStudent(){
+            studentList.remove(selectedIndex);
+            fireTableDataChanged();
         }
     }
     static class StudentListSelectionHandler implements ListSelectionListener {
         @Override
         public void valueChanged(ListSelectionEvent e) {
             ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+            int index = lsm.getAnchorSelectionIndex();
+            int length = ((StudentTableModel)studentListTable.getModel()).studentList.size();
+            if(index >= length || index < 0){
+                studentListTable.clearSelection();
+                return;
+            }
+            
+            addButton.setEnabled(lsm.isSelectionEmpty());
+            removeButton.setEnabled(!lsm.isSelectionEmpty());
+            updateButton.setEnabled(!lsm.isSelectionEmpty());
+            
+            StudentTableModel tableModel = (StudentTableModel)studentListTable.getModel();
+            tableModel.selectedIndex = index;
+            Student s = tableModel.studentList.get(index);
+            idField.setText(String.valueOf(s.getId()));
+            nameField.setText((String)s.getFullName());
+            pointField.setText(String.valueOf(s.getPoint()));
+            addressField.setText((String)s.getAddress());
+            noteField.setText((String)s.getNote());
+            setImage(imageLabel, imageNameLabel, s.getImage());
         }
     }
     private static void initColumnSizes(JTable table) {
@@ -121,6 +167,10 @@ public class StudentManagementSwing extends JFrame{
             column.setPreferredWidth(Math.max(headerWidth, cellWidth));
         }
     }
+    public static void setImage(JLabel imageLabel, JLabel imageNameLabel, String imagePath){
+        imageLabel.setIcon(new ImageIcon(new ImageIcon(imagePath).getImage().getScaledInstance(150, 150, Image.SCALE_DEFAULT)));
+        imageNameLabel.setText(imagePath);
+    }
     public static void addComponentsToPane(Container pane){
         pane.setLayout(new BorderLayout());
         
@@ -130,7 +180,7 @@ public class StudentManagementSwing extends JFrame{
         titleLabel.setFont(new Font("Calibri", Font.PLAIN, 30));
         titlePanel.add(titleLabel);
         
-        studentListTable = new JTable(new StudentTableModel());
+        studentListTable = new JTable(new StudentTableModel(StudentUtils.getAllStudents()));
         studentListTable.setFillsViewportHeight(true);
         initColumnSizes(studentListTable);
         studentListTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -138,6 +188,7 @@ public class StudentManagementSwing extends JFrame{
         
         scrollPane = new JScrollPane(studentListTable);
         scrollPane.setBorder(BorderFactory.createTitledBorder("Danh sách học sinh"));
+        scrollPane.setPreferredSize(new Dimension(-1, 380));
         
         formPanel = new JPanel();
         formPanel.setLayout(new FlowLayout());
@@ -212,8 +263,7 @@ public class StudentManagementSwing extends JFrame{
                 int returnVal = imageChooser.showOpenDialog(null);
                 if (returnVal == JFileChooser.APPROVE_OPTION) {
                     File file = imageChooser.getSelectedFile();
-                    imageLabel.setIcon(new ImageIcon(new ImageIcon(file.toPath().toString()).getImage().getScaledInstance(150, 150, Image.SCALE_DEFAULT)));
-                    imageNameLabel.setText(file.toPath().toString());
+                    setImage(imageLabel, imageNameLabel, file.toPath().toString());
                 }
             }
         });
@@ -235,6 +285,20 @@ public class StudentManagementSwing extends JFrame{
         
         actionPanel = new JPanel();
         actionPanel.setLayout(new FlowLayout());
+        resetButton = new JButton("Làm mới");
+        resetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                studentListTable.clearSelection();
+                idField.setText(null);
+                nameField.setText(null);
+                addressField.setText(null);
+                pointField.setText(null);
+                noteField.setText(null);
+                imageLabel.setIcon(null);
+                imageNameLabel.setText(null);
+            }
+        });
         addButton = new JButton("Thêm");
         addButton.addActionListener(new ActionListener() {
             @Override
@@ -246,6 +310,13 @@ public class StudentManagementSwing extends JFrame{
                     student.setPoint(Float.parseFloat(pointField.getText()));
                     student.setAddress(addressField.getText());
                     student.setNote(noteField.getText());
+                    student.setImage(StudentUtils.saveImage(imageNameLabel.getText(), student.getId(), null));
+                    
+                    StudentUtils.writeToBinaryFile(student);
+                    
+                    ((StudentTableModel)studentListTable.getModel()).addStudent(student);
+                    
+                    System.out.println(student.toString());
                     
                     JOptionPane.showMessageDialog(pane, "Thêm thành công", "About", 
                         JOptionPane.INFORMATION_MESSAGE);
@@ -256,8 +327,25 @@ public class StudentManagementSwing extends JFrame{
             }
         });
         removeButton = new JButton("Xoá");
+        removeButton.setEnabled(false);
+        removeButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    int id = Integer.parseInt(idField.getText());
+                    StudentUtils.removeStudent(id);
+                    ((StudentTableModel)studentListTable.getModel()).removeStudent();
+                    JOptionPane.showMessageDialog(pane, "Xoá thành công", "About", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                } catch(Exception ex){
+                    ex.printStackTrace();
+                }
+            }
+        });
         updateButton = new JButton("Cập nhật");
+        updateButton.setEnabled(false);
         exportButton = new JButton("Xuất CSV");
+        actionPanel.add(resetButton);
         actionPanel.add(addButton);
         actionPanel.add(removeButton);
         actionPanel.add(updateButton);
