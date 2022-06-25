@@ -8,18 +8,24 @@ package studentmanagementswing;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import model.Student;
+import verifier.NotEmptyVerifier;
+import verifier.PointVerifier;
 
 /**
  *
  * @author duc
  */
-public class StudentManagementSwing extends JFrame implements ActionListener{
+public class StudentManagementSwing extends JFrame{
     private static JPanel titlePanel;
     private static JLabel titleLabel;
     
@@ -34,9 +40,10 @@ public class StudentManagementSwing extends JFrame implements ActionListener{
     private static JTextArea noteField;
     private static JScrollPane noteFiledScrollPane;
     private static JLabel imageLabel;
+    private static JLabel imageNameLabel;
     private static JButton imageButton;
     
-    private static JPanel mainPanel;
+    private static JSplitPane mainPanel;
     
     private static JPanel actionPanel;
     private static JButton addButton;
@@ -88,7 +95,6 @@ public class StudentManagementSwing extends JFrame implements ActionListener{
         @Override
         public void valueChanged(ListSelectionEvent e) {
             ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-            System.out.println(lsm.getAnchorSelectionIndex());
         }
     }
     private static void initColumnSizes(JTable table) {
@@ -134,72 +140,121 @@ public class StudentManagementSwing extends JFrame implements ActionListener{
         scrollPane.setBorder(BorderFactory.createTitledBorder("Danh sách học sinh"));
         
         formPanel = new JPanel();
-        formPanel.setBorder(BorderFactory.createTitledBorder("Thông tin học sinh"));
-        formPanel.setLayout(new GridBagLayout());
+        formPanel.setLayout(new FlowLayout());
+        JScrollPane formScrollPane = new JScrollPane(formPanel);
+        formScrollPane.setBorder(BorderFactory.createTitledBorder("Thông tin học sinh"));
+        
         idField = new JTextField(25);
         idField.setEnabled(false);
         nameField = new JTextField(25);
+        nameField.setInputVerifier(new NotEmptyVerifier("Tên học sinh"));
         pointField = new JTextField(25);
+        pointField.setInputVerifier(new NotEmptyVerifier("Điểm"));
+        pointField.setInputVerifier(new PointVerifier());
         addressField = new JTextField(25);
-        noteField = new JTextArea(3, 25);
+        addressField.setInputVerifier(new NotEmptyVerifier("Địa chỉ"));
+        noteField = new JTextArea(4, 25);
+        noteField.setLineWrap(true);
         noteFiledScrollPane = new JScrollPane(noteField);
+        JPanel formGBLPanel1 = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         c.gridx = 0;
         c.gridy = 0;
         c.anchor = GridBagConstraints.EAST;
         c.insets = new Insets(3,5,3,5);
-        formPanel.add(new JLabel("Mã học sinh:"), c);
+        formGBLPanel1.add(new JLabel("Mã học sinh:"), c);
         c.gridy += 1;
-        formPanel.add(new JLabel("Tên học sinh:"), c);
+        formGBLPanel1.add(new JLabel("Tên học sinh:"), c);
         c.gridy += 1;
-        formPanel.add(new JLabel("Điểm:"), c);
+        formGBLPanel1.add(new JLabel("Điểm:"), c);
         c.gridy += 1;
-        formPanel.add(new JLabel("Địa chỉ:"), c);
-        c.gridx = 2;
-        c.gridy = 0;
-        formPanel.add(new JLabel("Ghi chú:"), c);
+        formGBLPanel1.add(new JLabel("Địa chỉ:"), c);
         
-        c = new GridBagConstraints();
         c.gridx = 1;
         c.gridy = 0;
         c.anchor = GridBagConstraints.WEST;
-        c.insets = new Insets(3,5,3,5);
-        formPanel.add(idField, c);
+        formGBLPanel1.add(idField, c);
         c.gridy += 1;
-        formPanel.add(nameField, c);
+        formGBLPanel1.add(nameField, c);
         c.gridy += 1;
-        formPanel.add(pointField, c);
+        formGBLPanel1.add(pointField, c);
         c.gridy += 1;
-        formPanel.add(addressField, c);
+        formGBLPanel1.add(addressField, c);
+        formPanel.add(formGBLPanel1);
         
+        JPanel formGBLPanel2 = new JPanel(new GridBagLayout());
         c = new GridBagConstraints();
-        c.gridx = 3;
+        c.gridx = 0;
         c.gridy = 0;
-        c.gridheight = 3;
         c.insets = new Insets(3,5,3,5);
+        c.anchor = GridBagConstraints.WEST;
+        formGBLPanel2.add(new JLabel("Ghi chú:"), c);
+        c.gridy = 1;
+        c.gridheight = 4;
         c.anchor = GridBagConstraints.NORTH;
         c.fill = GridBagConstraints.BOTH;
-        formPanel.add(noteFiledScrollPane, c);
+        formGBLPanel2.add(noteFiledScrollPane, c);
+        formPanel.add(formGBLPanel2);
         
-        imageLabel = new JLabel(new ImageIcon("trend-avatar-1.jpg"));
-        imageButton = new JButton("Thay đổi hình ảnh");
+        JPanel formGBLPanel3 = new JPanel(new GridBagLayout());
+        imageLabel = new JLabel();
+        JFileChooser imageChooser = new JFileChooser();
+        imageChooser.setDialogTitle("Chọn hình ảnh");
+        imageChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+        imageChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        imageChooser.setFileFilter(new FileNameExtensionFilter("Image files", ImageIO.getReaderFileSuffixes()));
+        imageChooser.setAcceptAllFileFilterUsed(false);
+        imageNameLabel = new JLabel();
+        imageButton = new JButton("Chọn hình ảnh");
+        imageButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int returnVal = imageChooser.showOpenDialog(null);
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = imageChooser.getSelectedFile();
+                    imageLabel.setIcon(new ImageIcon(new ImageIcon(file.toPath().toString()).getImage().getScaledInstance(150, 150, Image.SCALE_DEFAULT)));
+                    imageNameLabel.setText(file.toPath().toString());
+                }
+            }
+        });
         
         c = new GridBagConstraints();
-        c.gridx = 4;
+        c.gridx = 0;
         c.gridy = 0;
+        c.gridheight = 3;
+        c.anchor = GridBagConstraints.NORTHWEST;
         c.insets = new Insets(0,10,0,0);
-        formPanel.add(imageLabel, c);
+        formGBLPanel3.add(imageLabel, c);
         c.gridy = 3;
-        formPanel.add(imageButton, c);
+        formGBLPanel3.add(imageNameLabel, c);
+        c.gridy = 8;
+        formGBLPanel3.add(imageButton, c);
+        formPanel.add(formGBLPanel3);
         
-        mainPanel = new JPanel();
-        mainPanel.setLayout(new BorderLayout());
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
-        mainPanel.add(formPanel, BorderLayout.SOUTH);
+        mainPanel = new JSplitPane(JSplitPane.VERTICAL_SPLIT, scrollPane, formScrollPane);
         
         actionPanel = new JPanel();
         actionPanel.setLayout(new FlowLayout());
         addButton = new JButton("Thêm");
+        addButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    Student student = new Student();
+                    
+                    student.setFullName(nameField.getText());
+                    student.setPoint(Float.parseFloat(pointField.getText()));
+                    student.setAddress(addressField.getText());
+                    student.setNote(noteField.getText());
+                    
+                    JOptionPane.showMessageDialog(pane, "Thêm thành công", "About", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                } catch(Exception ex) {
+                    JOptionPane.showMessageDialog( pane, ex.getMessage(), "Lỗi", 
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
         removeButton = new JButton("Xoá");
         updateButton = new JButton("Cập nhật");
         exportButton = new JButton("Xuất CSV");
@@ -213,13 +268,14 @@ public class StudentManagementSwing extends JFrame implements ActionListener{
         pane.add(mainPanel, BorderLayout.CENTER);
     }
     private static void createAndShowGUI() {
-        JFrame.setDefaultLookAndFeelDecorated(true);
+//        JFrame.setDefaultLookAndFeelDecorated(true);
         JFrame window = new JFrame();
         addComponentsToPane(window.getContentPane());
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         window.setTitle("Quản lý học sinh");
-        window.pack();
         window.setVisible(true);
+        window.setSize(1150, 650);
+        window.setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
     /**
      * @param args the command line arguments
@@ -233,11 +289,6 @@ public class StudentManagementSwing extends JFrame implements ActionListener{
                 createAndShowGUI();
             }
         });
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
 }

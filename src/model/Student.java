@@ -5,12 +5,6 @@
  */
 package model;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
@@ -18,62 +12,20 @@ import java.io.Serializable;
  * @author duc
  */
 public class Student implements Serializable{
-    public static final String DEFAULT_DIRECTION = "student_list/";
+    private static final long serialVersionUID = 1L;
     private Integer id;
     private String fullName;
     private Float point;
-    private String image;
+    private byte [] image;
     private String address;
     private String note;
     
     public Student(){
-        this.id = getNextId();
-    }
-    
-    public Student(String fullName, float point, String image, String address, String note){
-        this();
-        this.fullName = fullName;
-        this.point = point;
-        this.image = image;
-        this.address = address;
-        this.note = note;
-    }
-    
-    public static void writeToBinaryFile(Student student){
-        try (var oos = new ObjectOutputStream(
-                new BufferedOutputStream(new FileOutputStream(DEFAULT_DIRECTION + student.id)))) {
-            oos.writeObject(student);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-        
-        try(var fos = new FileOutputStream("student_list/last_id.dat")){
-            fos.write(student.id);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-    
-    public static int getNextId(){
-        int nextId = 0;
-        try{
-            File yourFile = new File("student_list/last_id.dat");
-            yourFile.createNewFile();
-        } catch(IOException ex){
-            ex.printStackTrace();
-        }
-        
-        try (var fis = new FileInputStream("student_list/last_id.dat")){
-            nextId = fis.read() + 1;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-        return nextId;
+        this.id = 0;
     }
     
     public String toString(){
-        return "Student@[id=" + id + " , name=" + fullName + ", "
-                + "address=" + address + ",note=" + note+ "]";
+        return id + "|" + fullName + "|" + address + "|" + note;
     }
 
     /**
@@ -117,6 +69,20 @@ public class Student implements Serializable{
     public void setPoint(Float point) {
         this.point = point;
     }
+    
+    /**
+     * @return the image
+     */
+    public byte [] getImage() {
+        return image;
+    }
+
+    /**
+     * @param image the image to set
+     */
+    public void setImage(byte [] image) {
+        this.image = image;
+    }
 
     /**
      * @return the address
@@ -144,19 +110,5 @@ public class Student implements Serializable{
      */
     public void setNote(String note) {
         this.note = note;
-    }
-
-    /**
-     * @return the image
-     */
-    public String getImage() {
-        return image;
-    }
-
-    /**
-     * @param image the image to set
-     */
-    public void setImage(String image) {
-        this.image = image;
     }
 }
