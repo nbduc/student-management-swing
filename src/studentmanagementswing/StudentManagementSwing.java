@@ -9,8 +9,10 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.filechooser.FileFilter;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -56,7 +58,7 @@ public class StudentManagementSwing extends JFrame{
     
     static class StudentTableModel extends AbstractTableModel {
         public int selectedIndex = 0;
-        public final ArrayList<Student> studentList;
+        public ArrayList<Student> studentList;
         public StudentTableModel(ArrayList<Student> studentList) {
             super();
             this.studentList = studentList;
@@ -116,31 +118,37 @@ public class StudentManagementSwing extends JFrame{
             studentList.remove(selectedIndex);
             fireTableDataChanged();
         }
+        
+        public void updateStudent(Student updatedStudent){
+            studentList = StudentUtils.getAllStudents();
+            fireTableDataChanged();
+        }
     }
     static class StudentListSelectionHandler implements ListSelectionListener {
         @Override
         public void valueChanged(ListSelectionEvent e) {
             ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-            int index = lsm.getAnchorSelectionIndex();
-            int length = ((StudentTableModel)studentListTable.getModel()).studentList.size();
-            if(index >= length || index < 0){
-                studentListTable.clearSelection();
-                return;
-            }
-            
             addButton.setEnabled(lsm.isSelectionEmpty());
             removeButton.setEnabled(!lsm.isSelectionEmpty());
             updateButton.setEnabled(!lsm.isSelectionEmpty());
-            
+            int viewRow = studentListTable.getSelectedRow();
+            int length = ((StudentTableModel)studentListTable.getModel()).studentList.size();
+            if(viewRow >= length || viewRow < 0){
+                studentListTable.clearSelection();
+                return;
+            }
+            int modelRow = studentListTable.convertRowIndexToModel(viewRow);
+
             StudentTableModel tableModel = (StudentTableModel)studentListTable.getModel();
-            tableModel.selectedIndex = index;
-            Student s = tableModel.studentList.get(index);
+            Student s = tableModel.studentList.get(modelRow);
             idField.setText(String.valueOf(s.getId()));
             nameField.setText((String)s.getFullName());
             pointField.setText(String.valueOf(s.getPoint()));
             addressField.setText((String)s.getAddress());
             noteField.setText((String)s.getNote());
             setImage(imageLabel, imageNameLabel, s.getImage());
+            
+            tableModel.selectedIndex = modelRow;
         }
     }
     private static void initColumnSizes(JTable table) {
@@ -171,6 +179,15 @@ public class StudentManagementSwing extends JFrame{
         imageLabel.setIcon(new ImageIcon(new ImageIcon(imagePath).getImage().getScaledInstance(150, 150, Image.SCALE_DEFAULT)));
         imageNameLabel.setText(imagePath);
     }
+    public static void reset(){
+        idField.setText(null);
+        nameField.setText(null);
+        addressField.setText(null);
+        pointField.setText(null);
+        noteField.setText(null);
+        imageLabel.setIcon(null);
+        imageNameLabel.setText(null);
+    }
     public static void addComponentsToPane(Container pane){
         pane.setLayout(new BorderLayout());
         
@@ -185,6 +202,7 @@ public class StudentManagementSwing extends JFrame{
         initColumnSizes(studentListTable);
         studentListTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         studentListTable.getSelectionModel().addListSelectionListener(new StudentListSelectionHandler());
+        studentListTable.setAutoCreateRowSorter(true);
         
         scrollPane = new JScrollPane(studentListTable);
         scrollPane.setBorder(BorderFactory.createTitledBorder("Danh sách học sinh"));
@@ -290,13 +308,7 @@ public class StudentManagementSwing extends JFrame{
             @Override
             public void actionPerformed(ActionEvent e) {
                 studentListTable.clearSelection();
-                idField.setText(null);
-                nameField.setText(null);
-                addressField.setText(null);
-                pointField.setText(null);
-                noteField.setText(null);
-                imageLabel.setIcon(null);
-                imageNameLabel.setText(null);
+                reset();
             }
         });
         addButton = new JButton("Thêm");
@@ -312,16 +324,16 @@ public class StudentManagementSwing extends JFrame{
                     student.setNote(noteField.getText());
                     student.setImage(StudentUtils.saveImage(imageNameLabel.getText(), student.getId(), null));
                     
-                    StudentUtils.writeToBinaryFile(student);
+                    StudentUtils.writeToBinaryFile(student, false);
                     
                     ((StudentTableModel)studentListTable.getModel()).addStudent(student);
                     
-                    System.out.println(student.toString());
-                    
                     JOptionPane.showMessageDialog(pane, "Thêm thành công", "About", 
                         JOptionPane.INFORMATION_MESSAGE);
+                    reset();
                 } catch(Exception ex) {
-                    JOptionPane.showMessageDialog( pane, ex.getMessage(), "Lỗi", 
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(pane, ex.getMessage(), "Lỗi", 
                         JOptionPane.ERROR_MESSAGE);
                 }
             }
@@ -337,14 +349,83 @@ public class StudentManagementSwing extends JFrame{
                     ((StudentTableModel)studentListTable.getModel()).removeStudent();
                     JOptionPane.showMessageDialog(pane, "Xoá thành công", "About", 
                         JOptionPane.INFORMATION_MESSAGE);
+                    reset();
                 } catch(Exception ex){
                     ex.printStackTrace();
+                    JOptionPane.showMessageDialog(pane, ex.getMessage(), "Lỗi", 
+                        JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
         updateButton = new JButton("Cập nhật");
         updateButton.setEnabled(false);
+        updateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Student updatedStudent = new Student();
+                updatedStudent.setId(Integer.parseInt(idField.getText()));
+                updatedStudent.setFullName(nameField.getText());
+                updatedStudent.setPoint(Double.parseDouble(pointField.getText()));
+                updatedStudent.setAddress(addressField.getText());
+                updatedStudent.setNote(noteField.getText());
+                
+                StudentTableModel tableModel = (StudentTableModel)studentListTable.getModel();
+                Student s = tableModel.studentList.get(tableModel.selectedIndex);
+                if(!imageNameLabel.getText().equals(s.getImage())){
+                    String imageUrl = StudentUtils.saveImage(imageNameLabel.getText(), updatedStudent.getId(), null);
+                    updatedStudent.setImage(imageUrl);
+                } else {
+                    updatedStudent.setImage(s.getImage());
+                }
+                
+                try{
+                    StudentUtils.writeToBinaryFile(updatedStudent, true);
+                    tableModel.updateStudent(updatedStudent);
+                    JOptionPane.showMessageDialog(pane, "Cập nhật thành công", "About", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                    reset();
+                } catch (Exception ex){
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(pane, ex.getMessage(), "Lỗi", 
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        
+        
+        JFileChooser csvFileChooser = new JFileChooser();
+        csvFileChooser.setDialogTitle("Chọn nơi lưu file");
+        csvFileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+        csvFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        csvFileChooser.setFileFilter(new FileFilter(){
+            public boolean accept(File f) {
+                return f.isDirectory() || (f.isFile() && f.getName().toLowerCase().endsWith(".csv"));
+            }
+            public String getDescription() {
+              return "CSV file";
+            }
+        });
+        csvFileChooser.setSelectedFile(new File("student_list.csv"));
+        csvFileChooser.setAcceptAllFileFilterUsed(false);
         exportButton = new JButton("Xuất CSV");
+        exportButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int returnVal = csvFileChooser.showOpenDialog(null);
+                if (returnVal == JFileChooser.APPROVE_OPTION) {
+                    File file = csvFileChooser.getSelectedFile();
+                    try {
+                    StudentUtils.writeToCsvFile(file);
+                    JOptionPane.showMessageDialog(pane, "Xuất ra file thành công", "About", 
+                        JOptionPane.INFORMATION_MESSAGE);
+                    } catch (IOException ex) {
+                        JOptionPane.showMessageDialog(pane, ex.getMessage(), "Lỗi", 
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        });
+        
         actionPanel.add(resetButton);
         actionPanel.add(addButton);
         actionPanel.add(removeButton);

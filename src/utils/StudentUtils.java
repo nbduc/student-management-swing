@@ -7,12 +7,16 @@ package utils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -42,7 +46,7 @@ public class StudentUtils {
         }
         return studentList;
     }
-    public static void writeToBinaryFile(Student student){
+    public static void writeToBinaryFile(Student student, boolean isUpdate){
         try (var oos = new ObjectOutputStream(
                 new BufferedOutputStream(new FileOutputStream(DEFAULT_DIR + "/" + student.getId())))) {
             oos.writeObject(student);
@@ -50,10 +54,12 @@ public class StudentUtils {
             ex.printStackTrace();
         }
         
-        try(var fos = new FileOutputStream(DEFAULT_DIR + "/last_id.dat")){
-            fos.write(student.getId());
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        if(!isUpdate){
+            try(var fos = new FileOutputStream(DEFAULT_DIR + "/last_id.dat")){
+                fos.write(student.getId());
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         }
     }
     
@@ -137,5 +143,40 @@ public class StudentUtils {
             return file.delete();
         }
         return false;
+    }
+    
+    private static String formatCsvField(String field){
+        final String DOUBLE_QUOTES = "\"";
+        return DOUBLE_QUOTES + field + DOUBLE_QUOTES;
+    }
+    
+    public static void writeToCsvFile(File file) throws IOException {
+        ArrayList<Student> studentList = getAllStudents();
+        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
+        StringBuilder sb = new StringBuilder();
+        sb.append(formatCsvField("Mã học sinh"));
+        sb.append(',');
+        sb.append(formatCsvField("Tên học sinh"));
+        sb.append(',');
+        sb.append(formatCsvField("Điểm"));
+        sb.append(',');
+        sb.append(formatCsvField("Địa chỉ"));
+        sb.append(',');
+        sb.append(formatCsvField("Ghi chú"));
+        sb.append("\n");
+        for(Student s : studentList){
+            sb.append(formatCsvField(String.valueOf(s.getId())));
+            sb.append(',');
+            sb.append(formatCsvField(s.getFullName()));
+            sb.append(',');
+            sb.append(formatCsvField(String.valueOf(s.getPoint())));
+            sb.append(',');
+            sb.append(formatCsvField(s.getAddress()));
+            sb.append(',');
+            sb.append(formatCsvField(s.getNote()));
+            sb.append('\n');
+        }
+        bw.write(sb.toString());
+        bw.close();
     }
 }
